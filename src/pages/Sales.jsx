@@ -12,6 +12,11 @@ export default function Sales() {
   const [page, setPage] = useState(1)
   const pageSize = 10
 
+  // State for filters
+  const [idFilter, setIdFilter] = useState('');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
+
   useEffect(() => {
     fetchSales()
   }, [])
@@ -40,7 +45,7 @@ export default function Sales() {
     if (error) alert(error.message)
     else {
       setSales(data)
-      setPage(1)
+      setPage(1) // Reset to first page when new data is fetched
     }
 
     setLoading(false)
@@ -110,10 +115,27 @@ export default function Sales() {
     return diffInHours < 24;
   };
 
-  const totalPages = Math.ceil(sales.length / pageSize)
-  const startIndex = (page - 1) * pageSize
-  const paginatedSales = sales.slice(startIndex, startIndex + pageSize)
+  // Apply filters to the sales data
+  const filteredSales = sales.filter(sale => {
+    const saleDate = new Date(sale.created_at);
+    const isIdMatch = idFilter ? sale.display_id.includes(idFilter) : true;
+    
+    // Date filtering: ensure both start and end dates are valid and comparison is made
+    const isStartDateMatch = startDateFilter ? saleDate >= new Date(startDateFilter) : true;
+    // For endDateFilter, we want to include the entire day, so we set time to end of day
+    const isEndDateMatch = endDateFilter ? saleDate <= new Date(endDateFilter + 'T23:59:59.999Z') : true;
 
+    return isIdMatch && isStartDateMatch && isEndDateMatch;
+  });
+
+  // Pagination logic now uses filteredSales
+  const totalPages = Math.ceil(filteredSales.length / pageSize);
+  const startIndex = (page - 1) * pageSize;
+  const paginatedSales = filteredSales.slice(startIndex, startIndex + pageSize);
+
+  const handleFilterChange = () => {
+    setPage(1); // Reset to first page when filters change
+  };
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
@@ -137,6 +159,49 @@ export default function Sales() {
         />
       )}
 
+      {/* Filter Section */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <h3 className="text-lg font-semibold mb-3">Filter Sales</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* ID Filter */}
+          <div>
+            <label htmlFor="id-filter" className="block text-sm font-medium text-gray-700">Filter by ID</label>
+            <input
+              type="text"
+              id="id-filter"
+              value={idFilter}
+              onChange={(e) => { setIdFilter(e.target.value); handleFilterChange(); }}
+              placeholder="Enter Sale ID..."
+              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+
+          {/* Start Date Filter */}
+          <div>
+            <label htmlFor="start-date-filter" className="block text-sm font-medium text-gray-700">Start Date</label>
+            <input
+              type="date"
+              id="start-date-filter"
+              value={startDateFilter}
+              onChange={(e) => { setStartDateFilter(e.target.value); handleFilterChange(); }}
+              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+
+          {/* End Date Filter */}
+          <div>
+            <label htmlFor="end-date-filter" className="block text-sm font-medium text-gray-700">End Date</label>
+            <input
+              type="date"
+              id="end-date-filter"
+              value={endDateFilter}
+              onChange={(e) => { setEndDateFilter(e.target.value); handleFilterChange(); }}
+              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead className="bg-gray-100">
@@ -156,16 +221,15 @@ export default function Sales() {
                   Loading...
                 </td>
               </tr>
-            ) : paginatedSales.length === 0 ? (
+            ) : filteredSales.length === 0 ? ( // Use filteredSales.length to check if any sales match criteria
               <tr>
                 <td colSpan="5" className="p-4 text-center text-gray-500">
-                  No sales recorded
+                  No sales found matching your criteria.
                 </td>
               </tr>
             ) : (
               paginatedSales.map(sale => {
                 const isCancelled = !!sale.cancelled_at;
-                // Determine if the sale is within the 24-hour window and not cancelled
                 const canCancel = !isCancelled && isWithin24Hours(sale.created_at);
 
                 return (
@@ -246,7 +310,7 @@ export default function Sales() {
         <div className="flex items-center space-x-2">
             <button
               className="px-3 py-1 border rounded text-sm disabled:opacity-50"
-              disabled={page === 1}
+              disabled={page === 1 || filteredSales.length === 0} // Disable if no sales or on first page
               onClick={() => setPage(p => p - 1)}
             >
               Prev
@@ -254,9 +318,9 @@ export default function Sales() {
 
             {/* Jump to Page Input */}
             <div className="flex items-center space-x-1 text-sm">
-              <label htmlFor="jump-to-page-products">Go to page:</label>
+              <label htmlFor="jump-to-page-sales">Go to page:</label>
               <input
-                id="jump-to-page-products"
+                id="jump-to-page-sales"
                 type="number"
                 min="1"
                 max={totalPages}
@@ -273,7 +337,7 @@ export default function Sales() {
 
             <button
               className="px-3 py-1 border rounded text-sm disabled:opacity-50"
-              disabled={page === totalPages}
+              disabled={page === totalPages || filteredSales.length === 0} // Disable if no sales or on last page
               onClick={() => setPage(p => p + 1)}
             >
               Next
