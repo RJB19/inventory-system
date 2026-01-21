@@ -8,55 +8,167 @@ export default function StockInHistory() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
-  async function fetchBatches() {
-    const { data } = await supabase
-      .from('stock_batches')
-      .select(
-        `
-        id,
-        quantity,
-        cost_price,
-        received_at,
-        products ( name, sku )
-      `
-      )
-      .order('received_at', { ascending: false })
+  // State for filters
+  const [productNameFilter, setProductNameFilter] = useState('');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
 
-    setBatches(data || [])
-    setLoading(false)
+  // State for filter visibility
+  const [isFilterVisible, setIsFilterVisible] = useState(false); // Initially hidden
+
+  async function fetchBatches() {
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from('stock_batches')
+        .select(
+          `
+          id,
+          quantity,
+          cost_price,
+          received_at,
+          products ( name, sku )
+        `
+        )
+        .order('received_at', { ascending: false });
+
+      setBatches(data || []);
+    } catch (error) {
+      console.error('Error fetching stock batches:', error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    setLoading(true)
-    fetchBatches()
+    fetchBatches();
 
     const subscription = supabase
       .channel('stock_in_history')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_batches' }, payload => {
-        fetchBatches()
+        fetchBatches();
       })
-      .subscribe()
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription)
-    }
-  }, [])
+      supabase.removeChannel(subscription);
+    };
+  }, []);
 
-  const totalPages = Math.ceil(batches.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const currentBatches = batches.slice(startIndex, startIndex + itemsPerPage)
+  // Apply filters to the batches data
+  const filteredBatches = batches.filter(batch => {
+    const receivedDate = new Date(batch.received_at);
+
+    // Product Name Filter
+    const isProductNameMatch = productNameFilter
+      ? batch.products?.name.toLowerCase().includes(productNameFilter.toLowerCase())
+      : true;
+
+    // Date Range Filter
+    const isStartDateMatch = startDateFilter
+      ? receivedDate >= new Date(startDateFilter)
+      : true;
+    // For endDateFilter, we want to include the entire day, so we set time to end of day
+    const isEndDateMatch = endDateFilter
+      ? receivedDate <= new Date(endDateFilter + 'T23:59:59.999Z')
+      : true;
+
+    return isProductNameMatch && isStartDateMatch && isEndDateMatch;
+  });
+
+  // Pagination logic now uses filteredBatches
+  const totalPages = Math.ceil(filteredBatches.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentBatches = filteredBatches.slice(startIndex, startIndex + itemsPerPage);
+
+  // Function to reset to the first page when filters change
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+  };
+
+  // Function to clear all filters
+  const clearFilters = () => {
+    setProductNameFilter('');
+    setStartDateFilter('');
+    setEndDateFilter('');
+    handleFilterChange(); // Also resets page
+  };
 
   return (
     <div className="bg-white shadow rounded p-4">
-      <h2 className="text-lg font-semibold mb-3">Stock In History</h2>
+      {/* Header and Filter Toggle Button */}
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-lg font-semibold">Stock In History</h2>
+        <button
+          onClick={() => setIsFilterVisible(!isFilterVisible)}
+          className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        >
+          {isFilterVisible ? 'Hide Filters' : 'Filter'}
+        </button>
+      </div>
+
+      {/* Filter Section - Conditionally rendered */}
+      {isFilterVisible && (
+        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Product Name Filter */}
+            <div className="flex flex-col">
+              <label htmlFor="product-name-filter" className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+              <input
+                type="text"
+                id="product-name-filter"
+                value={productNameFilter}
+                onChange={(e) => { setProductNameFilter(e.target.value); handleFilterChange(); }}
+                placeholder="Filter by name..."
+                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+
+            {/* Start Date Filter */}
+            <div className="flex flex-col">
+              <label htmlFor="stock-start-date-filter" className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <input
+                type="date"
+                id="stock-start-date-filter"
+                value={startDateFilter}
+                onChange={(e) => { setStartDateFilter(e.target.value); handleFilterChange(); }}
+                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+
+            {/* End Date Filter */}
+            <div className="flex flex-col">
+              <label htmlFor="stock-end-date-filter" className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input
+                type="date"
+                id="stock-end-date-filter"
+                value={endDateFilter}
+                onChange={(e) => { setEndDateFilter(e.target.value); handleFilterChange(); }}
+                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+
+            {/* Clear Filters Button */}
+            <div className="flex flex-col justify-end">
+              <label className="block text-sm font-medium text-gray-700 mb-1 invisible">Clear Filters</label> {/* Invisible label for alignment */}
+              <button
+                onClick={clearFilters}
+                className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading && <p>Loading...</p>}
       
-      {!loading && batches.length === 0 && (
-        <p className="text-gray-500">No stock entries yet.</p>
+      {!loading && filteredBatches.length === 0 && (
+        <p className="text-gray-500">No stock entries found matching your criteria.</p>
       )}
 
-      {!loading && batches.length > 0 && (
+      {!loading && filteredBatches.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead className="bg-gray-100">
@@ -87,18 +199,27 @@ export default function StockInHistory() {
                 </tr>
               ))}
             </tbody>
+            {filteredBatches.length > 0 && (
+              <tfoot className="bg-gray-100 font-bold">
+                <tr>
+                  <td colSpan="4" className="p-2 border text-right">Total Stock In Cost:</td>
+                  <td className="p-2 border text-right">{formatPrice(
+                    filteredBatches.reduce((sum, batch) => sum + (batch.quantity * batch.cost_price), 0)
+                  )}</td>
+                  <td className="p-2 border"></td> {/* Empty cell for Date column */}
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       )}
       
-      {!loading && batches.length > 0 && totalPages > 1 && (
+      {!loading && filteredBatches.length > 0 && totalPages > 1 && (
         <div className="flex flex-col md:flex-row justify-between items-center mt-4 space-y-2 md:space-y-0">
-          {/* Page Info */}
           <div className="text-sm text-gray-700">
             Page {currentPage} of {totalPages}
           </div>
 
-          {/* Pagination Controls */}
           <div className="flex items-center space-x-2">
             <button
               className="px-3 py-1 border rounded text-sm disabled:opacity-50"
@@ -108,7 +229,6 @@ export default function StockInHistory() {
               Prev
             </button>
 
-            {/* Jump to Page Input */}
             <div className="flex items-center space-x-1 text-sm">
               <label htmlFor="jump-to-page-stock">Go to page:</label>
               <input
