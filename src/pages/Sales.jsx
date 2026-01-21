@@ -3,10 +3,14 @@ import { supabase } from '../services/supabase'
 import SaleForm from '../components/SaleForm'
 import { formatPrice } from '../utils/formatPrice'
 import { useAuth } from '../utils/AuthContext'; // Import useAuth
+import ReceiptModal from '../components/ReceiptModal'; // Import the new ReceiptModal component
 
 export default function Sales() {
   const { user } = useAuth(); // Get user from AuthContext
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false); // State for SaleForm modal
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false); // State for Receipt Modal
+  const [selectedSale, setSelectedSale] = useState(null); // To hold the sale data for the receipt
+
   const [sales, setSales] = useState([])
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
@@ -29,20 +33,7 @@ export default function Sales() {
 
     const { data, error } = await supabase
       .from('sales')
-      .select(`
-        id,
-        display_id,
-        created_at,
-        total_amount,
-        cancelled_at,
-        sale_items (
-          id,
-          product_id,
-          quantity,
-          selling_price,
-          products ( name, sku )
-        )
-      `)
+      .select('id,display_id,created_at,total_amount,cancelled_at,sale_items(id,product_id,quantity,selling_price,products(name,sku))')
       .order('created_at', { ascending: false })
 
     if (error) alert(error.message)
@@ -146,6 +137,18 @@ export default function Sales() {
     setStartDateFilter('');
     setEndDateFilter('');
     handleFilterChange(); // Also resets page
+  };
+
+  // Function to open the receipt modal
+  const handleViewReceipt = (sale) => {
+    setSelectedSale(sale);
+    setIsReceiptModalOpen(true);
+  };
+
+  // Function to close the receipt modal
+  const handleCloseReceiptModal = () => {
+    setIsReceiptModalOpen(false);
+    setSelectedSale(null);
   };
 
   return (
@@ -320,13 +323,22 @@ export default function Sales() {
                     </td>
 
                     <td className="p-3 border">
+                      {/* Cancel Button */}
                       {user?.role === 'admin' && canCancel && (
                         <button
                           onClick={() => cancelSale(sale)}
+                          className={`mr-2 hover:underline ${!canCancel ? 'text-gray-400 cursor-not-allowed' : 'text-red-600'}`}
                         >
                           Cancel
                         </button>
                       )}
+                      {/* View Receipt Button */}
+                      <button
+                        onClick={() => handleViewReceipt(sale)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Receipt
+                      </button>
                     </td>
                   </tr>
                 )
@@ -377,6 +389,13 @@ export default function Sales() {
             </button>
           </div>
       </div>
+
+      {/* Render Receipt Modal */}
+      <ReceiptModal
+        open={isReceiptModalOpen}
+        onClose={handleCloseReceiptModal}
+        saleData={selectedSale}
+      />
     </div>
   )
 }
