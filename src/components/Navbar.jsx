@@ -46,6 +46,16 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-between h-16">
           
+          {/* --- Logo Added Here --- */}
+          <div className="flex items-center">
+            <img
+              src="/valecor_log.png" // Path to the image in the public directory
+              alt="Valecor Logo"
+              className="block h-16 w-auto sm:h-20" // Increased size
+            />
+          </div>
+          {/* --- End Logo Addition --- */}
+
           {/* Mobile menu button*/}
           <div className="absolute inset-y-0 left-0 flex items-center md:hidden">
             <button

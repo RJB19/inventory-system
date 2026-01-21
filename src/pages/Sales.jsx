@@ -12,8 +12,6 @@ export default function Sales() {
   const [page, setPage] = useState(1)
   const pageSize = 10
 
-  
-
   useEffect(() => {
     fetchSales()
   }, [])
@@ -103,9 +101,18 @@ export default function Sales() {
     fetchSales()
   }
 
-const totalPages = Math.ceil(sales.length / pageSize)
-const startIndex = (page - 1) * pageSize
-const paginatedSales = sales.slice(startIndex, startIndex + pageSize)
+  // Helper function to check if sale is within 24 hours
+  const isWithin24Hours = (createdAt) => {
+    const now = new Date();
+    const saleDate = new Date(createdAt);
+    const diffInMilliseconds = now - saleDate;
+    const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
+    return diffInHours < 24;
+  };
+
+  const totalPages = Math.ceil(sales.length / pageSize)
+  const startIndex = (page - 1) * pageSize
+  const paginatedSales = sales.slice(startIndex, startIndex + pageSize)
 
 
   return (
@@ -156,8 +163,10 @@ const paginatedSales = sales.slice(startIndex, startIndex + pageSize)
                 </td>
               </tr>
             ) : (
-              paginatedSales.map(sale => { // Removed index here
-                const isCancelled = !!sale.cancelled_at
+              paginatedSales.map(sale => {
+                const isCancelled = !!sale.cancelled_at;
+                // Determine if the sale is within the 24-hour window and not cancelled
+                const canCancel = !isCancelled && isWithin24Hours(sale.created_at);
 
                 return (
                   <tr
@@ -214,15 +223,9 @@ const paginatedSales = sales.slice(startIndex, startIndex + pageSize)
                     </td>
 
                     <td className="p-3 border">
-                      {user?.role === 'admin' && (
+                      {user?.role === 'admin' && canCancel && (
                         <button
                           onClick={() => cancelSale(sale)}
-                          disabled={isCancelled}
-                          className={`hover:underline ${
-                            isCancelled
-                              ? 'text-gray-400 cursor-not-allowed'
-                              : 'text-red-600'
-                          }`}
                         >
                           Cancel
                         </button>
