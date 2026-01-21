@@ -1,0 +1,65 @@
+create table public.products (
+  id uuid not null default gen_random_uuid (),
+  name text not null,
+  sku text null,
+  unit text not null,
+  unit_description text null,
+  selling_price numeric(12, 2) not null,
+  low_stock_threshold integer null default 10,
+  created_at timestamp with time zone null default now(),
+  constraint products_pkey primary key (id),
+  constraint products_sku_key unique (sku)
+) TABLESPACE pg_default;
+
+create table public.sale_items (
+  id uuid not null default gen_random_uuid (),
+  sale_id uuid null,
+  product_id uuid null,
+  quantity integer not null,
+  selling_price numeric(12, 2) not null,
+  constraint sale_items_pkey primary key (id),
+  constraint sale_items_product_id_fkey foreign KEY (product_id) references products (id),
+  constraint sale_items_sale_id_fkey foreign KEY (sale_id) references sales (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create table public.sale_items (
+  id uuid not null default gen_random_uuid (),
+  sale_id uuid null,
+  product_id uuid null,
+  quantity integer not null,
+  selling_price numeric(12, 2) not null,
+  constraint sale_items_pkey primary key (id),
+  constraint sale_items_product_id_fkey foreign KEY (product_id) references products (id),
+  constraint sale_items_sale_id_fkey foreign KEY (sale_id) references sales (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create table public.sale_items (
+  id uuid not null default gen_random_uuid (),
+  sale_id uuid null,
+  product_id uuid null,
+  quantity integer not null,
+  selling_price numeric(12, 2) not null,
+  constraint sale_items_pkey primary key (id),
+  constraint sale_items_product_id_fkey foreign KEY (product_id) references products (id),
+  constraint sale_items_sale_id_fkey foreign KEY (sale_id) references sales (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create table public.sale_items (
+  id uuid not null default gen_random_uuid (),
+  sale_id uuid null,
+  product_id uuid null,
+  quantity integer not null,
+  selling_price numeric(12, 2) not null,
+  constraint sale_items_pkey primary key (id),
+  constraint sale_items_product_id_fkey foreign KEY (product_id) references products (id),
+  constraint sale_items_sale_id_fkey foreign KEY (sale_id) references sales (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create view product_stock as
+select
+  p.id,
+  p.name,
+  coalesce(sum(sb.remaining_quantity), 0) as current_stock
+from products p
+left join stock_batches sb on sb.product_id = p.id
+group by p.id;

@@ -1,0 +1,55 @@
+import { supabase } from './supabase';
+
+export async function createSchedule(schedule) {
+  const { data, error } = await supabase
+    .from('schedules')
+    .insert(schedule)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getSchedulesByDate(date) {
+  const localDateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`; // YYYY-MM-DD (Local)
+  const { data, error } = await supabase
+    .from('schedules')
+    .select('*')
+    .eq('date', localDateStr)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getAllSchedules() {
+  const { data, error } = await supabase
+    .from('schedules')
+    .select('*')
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateSchedule(id, updates) {
+  const { data, error } = await supabase
+    .from('schedules')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSchedule(id) {
+  const { error } = await supabase
+    .from('schedules')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
