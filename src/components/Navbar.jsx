@@ -46,46 +46,75 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-between h-16">
           
-          {/* --- Logo Added Here --- */}
           <div className="flex items-center">
-            <img
-              src="/valecor_log.png" // Path to the image in the public directory
-              alt="Valecor Logo"
-              className="block h-16 w-auto sm:h-20" // Increased size
-            />
+            {/* Mobile menu button */}
+            <div className="flex items-center md:hidden">
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                type="button"
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                aria-controls="mobile-menu"
+                aria-expanded={isOpen}
+              >
+                <span className="sr-only">Open main menu</span>
+                {/* Hamburger Icon */}
+                {!isOpen ? (
+                  <svg
+                    className="block h-6 w-6"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                ) : (
+                  // Close Icon
+                  <svg
+                    className="block h-6 w-6"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {/* --- Logo Added Here --- */}
+            <div className="flex items-center">
+              <img
+                src="/valecor_log.png" // Path to the image in the public directory
+                alt="Valecor Logo"
+                className="block h-16 w-auto sm:h-20" // Increased size
+              />
+            </div>
           </div>
           {/* --- End Logo Addition --- */}
-
-          {/* Mobile menu button*/}
-          <div className="absolute inset-y-0 left-0 flex items-center md:hidden">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-              aria-controls="mobile-menu"
-              aria-expanded={isOpen}
-            >
-              <span className="sr-only">Open main menu</span>
-              {/* Hamburger Icon */}
-              {!isOpen ? (
-                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              ) : (
-                // Close Icon
-                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
-            </button>
-          </div>
 
           {/* Desktop Menu */}
           <div className="flex-1 flex items-center justify-center md:items-stretch md:justify-start">
             <div className="hidden md:ml-6 md:flex items-center space-x-4">
               {dashboardLink(false)}
-              <NavLink to="/products" className={desktopLinkClass}>Products</NavLink>
-              <NavLink to="/sales" className={desktopLinkClass}>Sales</NavLink>
+              <NavLink to="/products" className={desktopLinkClass}>
+                Products
+              </NavLink>
+              <NavLink to="/sales" className={desktopLinkClass}>
+                Sales
+              </NavLink>
             </div>
           </div>
 
