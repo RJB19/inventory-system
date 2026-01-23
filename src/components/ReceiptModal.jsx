@@ -15,7 +15,7 @@ const generateReceiptHTML = (sale, customerName, cashierName) => {
             <title>Receipt - ${sale.display_id}</title>
             <style>
                 body { font-family: 'Arial', sans-serif; margin: 0; padding: 10px; font-size: 10px; }
-                .receipt-container { max-width: 80mm; margin: auto; padding: 5px; border: 1px solid #ccc; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+                .receipt-container { max-width: 80mm; margin: 0; padding: 5px; border: 1px solid #ccc; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
                 .receipt-header { text-align: center; margin-bottom: 10px; }
                 .receipt-header h1 { margin: 0; font-size: 1.2em; }
                 .receipt-details, .receipt-items, .receipt-footer { margin-bottom: 10px; }

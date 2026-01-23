@@ -308,10 +308,10 @@ export default function SaleForm({ onClose, onSaved }) {
               <div
                 key={item.id}
                 className={`flex justify-between items-center border-b py-2 ${
-                  isCancelled ? 'opacity-50 line-through' : ''
+                  isCancelled ? 'opacity-50' : ''
                 }`}
               >
-                <div>
+                <div className={`${isCancelled ? 'line-through' : ''}`}>
                   <div className="font-medium">
                     {item.name}
                     {isCancelled && (
@@ -325,7 +325,22 @@ export default function SaleForm({ onClose, onSaved }) {
                   </div>
                 </div>
 
-                {!isCancelled && (
+                {isCancelled ? (
+                  <button
+                    onClick={() =>
+                      setCart(prev =>
+                        prev.map(i =>
+                          i.id === item.id
+                            ? { ...i, cancelled: false }
+                            : i
+                        )
+                      )
+                    }
+                    className="text-blue-600 hover:underline text-sm"
+                  >
+                    Undo
+                  </button>
+                ) : (
                   <button
                     onClick={() =>
                       setCart(prev =>
