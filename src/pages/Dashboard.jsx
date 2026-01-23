@@ -5,6 +5,7 @@ import StockInHistory from '../components/StockInHistory'
 import SalesSummary from '../components/SalesSummary'
 import FastMovingItems from '../components/FastMovingItems'
 import HighProfitItems from '../components/HighProfitItems'
+import ProductMetrics from '../components/ProductMetrics'
 import LowStockItems from '../components/LowStockItems'
 import DailySalesCalendar from '../components/DailySalesCalendar';
 import DailySalesProfitChart from '../components/DailySalesProfitChart'; // New Import
@@ -105,6 +106,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
         <FastMovingItems />
         <HighProfitItems />
+      </div>
+
+      <div className="my-6">
+        <ProductMetrics />
       </div>
 
       <div className="my-6">

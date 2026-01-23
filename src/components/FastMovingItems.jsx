@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getSaleItems } from '../services/products';
 import { supabase } from '../services/supabase';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function FastMovingItems() {
   const [items, setItems] = useState([]);
@@ -16,11 +19,11 @@ export default function FastMovingItems() {
       const saleItems = await getSaleItems();
 
       const quantityMap = {};
-      saleItems.forEach(item => {
+      saleItems.forEach((item) => {
         if (!quantityMap[item.product_name]) {
           quantityMap[item.product_name] = {
             name: item.product_name,
-            value: 0
+            value: 0,
           };
         }
         quantityMap[item.product_name].value += item.quantity;
@@ -44,15 +47,56 @@ export default function FastMovingItems() {
 
     const subscription = supabase
       .channel('fast_moving_items')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, payload => {
-        fetchFastMovingItems();
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sales' },
+        (payload) => {
+          fetchFastMovingItems();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(subscription);
     };
   }, []);
+
+  const chartData = {
+    labels: items.map((item) => item.name),
+    datasets: [
+      {
+        label: 'Quantity Sold',
+        data: items.map((item) => item.value),
+        backgroundColor: COLORS,
+        borderColor: COLORS,
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false, // We will use a custom legend
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            let label = context.label || '';
+            if (label) {
+              label += ': ';
+            }
+            if (context.parsed !== null) {
+              label += `${context.parsed} sold`;
+            }
+            return label;
+          },
+        },
+      },
+    },
+  };
 
   if (loading) {
     return <p className="text-center p-4">Loading fast-moving items...</p>;
@@ -62,7 +106,9 @@ export default function FastMovingItems() {
     return (
       <div className="bg-white p-4 rounded-lg shadow">
         <h3 className="text-lg font-bold mb-2">Top 5 Fast-Moving Items</h3>
-        <p className="text-center text-gray-500">No fast-moving items to display.</p>
+        <p className="text-center text-gray-500">
+          No fast-moving items to display.
+        </p>
       </div>
     );
   }
@@ -70,24 +116,21 @@ export default function FastMovingItems() {
   return (
     <div className="bg-white p-4 rounded-lg shadow">
       <h3 className="text-lg font-bold mb-2">Top 5 Fast-Moving Items</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={items}
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {items.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip formatter={(value) => [`${value} sold`, 'Quantity']} />
-          <Legend layout="horizontal" align="center" verticalAlign="bottom" />
-        </PieChart>
-      </ResponsiveContainer>
+      <div style={{ height: '200px' }}>
+        <Pie data={chartData} options={chartOptions} />
+      </div>
+      {/* Custom Legend */}
+      <div className="mt-4 ml-4">
+        {items.map((item, index) => (
+          <div key={index} className="flex items-center justify-start">
+            <span
+              className="w-4 h-4 mr-2"
+              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+            ></span>
+            <span>{`Top ${index + 1}: ${item.name} (${item.value} sold)`}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

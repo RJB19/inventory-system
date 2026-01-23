@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { getSaleItems } from '../services/products';
-import { formatPrice } from '../utils/formatPrice'; // Reverted Import
+import { formatPrice } from '../utils/formatPrice';
 import { supabase } from '../services/supabase';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'; // Recharts imports
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function HighProfitItems() {
   const [items, setItems] = useState([]);
@@ -16,13 +19,13 @@ export default function HighProfitItems() {
     try {
       const saleItems = await getSaleItems();
 
-      // Aggregate by product_name and map to { name, value } for Recharts Pie
+      // Aggregate by product_name and map to { name, value } for the chart
       const profitMap = {};
-      saleItems.forEach(item => {
+      saleItems.forEach((item) => {
         if (!profitMap[item.product_name]) {
           profitMap[item.product_name] = {
             name: item.product_name,
-            value: 0 // Renamed from profit to value for Recharts
+            value: 0,
           };
         }
         profitMap[item.product_name].value += item.gross_profit;
@@ -46,15 +49,56 @@ export default function HighProfitItems() {
 
     const subscription = supabase
       .channel('high_profit_items')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, payload => {
-        fetchHighProfitItems();
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sales' },
+        (payload) => {
+          fetchHighProfitItems();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(subscription);
     };
   }, []);
+
+  const chartData = {
+    labels: items.map((item) => item.name),
+    datasets: [
+      {
+        label: 'Gross Profit',
+        data: items.map((item) => item.value),
+        backgroundColor: COLORS,
+        borderColor: COLORS,
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false, // We will use a custom legend
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            let label = context.label || '';
+            if (label) {
+              label += ': ';
+            }
+            if (context.parsed !== null) {
+              label += formatPrice(context.parsed);
+            }
+            return label;
+          },
+        },
+      },
+    },
+  };
 
   if (loading) {
     return <p className="text-center p-4">Loading high-profit items...</p>;
@@ -64,7 +108,9 @@ export default function HighProfitItems() {
     return (
       <div className="bg-white p-4 rounded-lg shadow">
         <h3 className="text-lg font-bold mb-2">Top 5 High-Profit Items</h3>
-        <p className="text-center text-gray-500">No high-profit items to display.</p>
+        <p className="text-center text-gray-500">
+          No high-profit items to display.
+        </p>
       </div>
     );
   }
@@ -72,24 +118,23 @@ export default function HighProfitItems() {
   return (
     <div className="bg-white p-4 rounded-lg shadow">
       <h3 className="text-lg font-bold mb-2">Top 5 High-Profit Items</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={items}
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {items.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip formatter={(value) => [formatPrice(value), 'Profit']} />
-          <Legend layout="horizontal" align="center" verticalAlign="bottom" />
-        </PieChart>
-      </ResponsiveContainer>
+      <div style={{ height: '200px' }}>
+        <Pie data={chartData} options={chartOptions} />
+      </div>
+      {/* Custom Legend */}
+      <div className="mt-4 ml-4">
+        {items.map((item, index) => (
+          <div key={index} className="flex items-center justify-start">
+            <span
+              className="w-4 h-4 mr-2"
+              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+            ></span>
+            <span>{`Top ${index + 1}: ${item.name} (${formatPrice(
+              item.value
+            )})`}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
