@@ -65,15 +65,29 @@ export default function StockInHistory() {
       : true;
 
     // Date Range Filter
-    const isStartDateMatch = startDateFilter
-      ? receivedDate >= new Date(startDateFilter)
-      : true;
-    // For endDateFilter, we want to include the entire day, so we set time to end of day
-    const isEndDateMatch = endDateFilter
-      ? receivedDate <= new Date(endDateFilter + 'T23:59:59.999Z')
-      : true;
+    const isDateInRange = (() => {
+      const itemDate = new Date(batch.received_at);
 
-    return isProductNameMatch && isStartDateMatch && isEndDateMatch;
+      if (startDateFilter) {
+        const start = new Date(startDateFilter);
+        start.setHours(0, 0, 0, 0);
+        if (itemDate < start) {
+          return false;
+        }
+      }
+
+      if (endDateFilter) {
+        const end = new Date(endDateFilter);
+        end.setHours(23, 59, 59, 999);
+        if (itemDate > end) {
+          return false;
+        }
+      }
+
+      return true;
+    })();
+
+    return isProductNameMatch && isDateInRange;
   });
 
   // Pagination logic now uses filteredBatches
