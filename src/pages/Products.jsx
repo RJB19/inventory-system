@@ -6,6 +6,8 @@ import {
   archiveProduct,
   unarchiveProduct,
   updateProductPrice,
+  updateProduct,
+  logProductChanges,
 } from '../services/products'
 import PriceHistoryModal from '../components/PriceHistoryModal'
 import { formatPrice } from '../utils/formatPrice'
@@ -20,6 +22,9 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState(null)
   const [editingProductId, setEditingProductId] = useState(null)
   const [tempPrice, setTempPrice] = useState('')
+  const [tempUnit, setTempUnit] = useState('')
+  const [tempThreshold, setTempThreshold] = useState('')
+  const [savingPrice, setSavingPrice] = useState(false); // New state
   const [search, setSearch] = useState('')
   const [lowStockOnly, setLowStockOnly] = useState(false)
   const [page, setPage] = useState(1)
@@ -31,6 +36,11 @@ export default function Products() {
   const dropdownRef = useRef(null)
   const [showStockInForm, setShowStockInForm] = useState(false); // New state
   const [showProductForm, setShowProductForm] = useState(false); // New state
+  const [highlightedThreshold, setHighlightedThreshold] = useState({ productId: null, timer: null });
+  const [highlightedUnit, setHighlightedUnit] = useState({ productId: null, timer: null });
+  const [highlightedPrice, setHighlightedPrice] = useState({ productId: null, timer: null });
+  const [highlightedRow, setHighlightedRow] = useState({ productId: null, timer: null });
+  const [highlightedStock, setHighlightedStock] = useState({ productId: null, timer: null });
 
   useEffect(() => {
     fetchProducts()
@@ -52,7 +62,7 @@ export default function Products() {
     setLoading(true)
     const { data: productsData, error } = await supabase
       .from('products')
-      .select('id, name, sku, selling_price, low_stock_threshold, archived_at')
+      .select('id, name, sku, unit, selling_price, low_stock_threshold, archived_at')
 
     if (error) {
       alert(error.message)
@@ -131,9 +141,18 @@ export default function Products() {
         {showStockInForm && (
           <div className="bg-white rounded shadow p-4"> {/* Removed mb-4 */}
             <StockInForm
-              onSuccess={() => {
+              onSuccess={(updatedProductId) => {
                 fetchProducts();
                 setShowStockInForm(false);
+                // Clear existing timer if any
+                if (highlightedStock.timer) {
+                  clearTimeout(highlightedStock.timer);
+                }
+                // Set highlight for 3 minutes
+                const timer = setTimeout(() => {
+                  setHighlightedStock({ productId: null, timer: null });
+                }, 180000); // 3 minutes
+                setHighlightedStock({ productId: updatedProductId, timer });
               }}
               onClose={() => setShowStockInForm(false)}
             />
@@ -153,9 +172,18 @@ export default function Products() {
         {showProductForm && (
           <div className="bg-white rounded shadow p-4"> {/* Removed mb-4 */}
             <ProductForm
-              onSuccess={() => {
+              onSuccess={(newProductId) => {
                 fetchProducts();
                 setShowProductForm(false);
+                // Clear existing timer if any
+                if (highlightedRow.timer) {
+                  clearTimeout(highlightedRow.timer);
+                }
+                // Set highlight for 3 minutes
+                const timer = setTimeout(() => {
+                  setHighlightedRow({ productId: null, timer: null });
+                }, 180000); // 3 minutes
+                setHighlightedRow({ productId: newProductId, timer });
               }}
               onClose={() => setShowProductForm(false)}
             />
@@ -241,18 +269,32 @@ export default function Products() {
                       <tr>
                         <th className="border p-2 text-left">Product</th>
                         <th className="border p-2">SKU</th>
+                        <th className="border p-2">Unit</th>
                         <th className="border p-2">Selling Price</th>
                         <th className="border p-2">Stock</th>
+                        <th className="border p-2">Threshold</th>
                         <th className="border p-2">Status</th>
                         <th className="border p-2">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {paginatedProducts.map(p => (
-                        <tr key={p.id}>
+                        <tr key={p.id} className={`${highlightedRow.productId === p.id ? 'bg-green-200 transition-colors duration-1000' : ''}`}>
                           <td className="border p-2">{p.name}</td>
                           <td className="border p-2 text-center">{p.sku || '-'}</td>
-                          <td className="border p-2 text-right">
+                          <td className={`border p-2 text-center ${highlightedUnit.productId === p.id ? 'bg-yellow-200 transition-colors duration-1000' : ''}`}>
+                            {editingProductId === p.id ? (
+                              <input
+                                type="text"
+                                className="border rounded px-2 py-1 w-24 text-center"
+                                value={tempUnit}
+                                onChange={e => setTempUnit(e.target.value)}
+                              />
+                            ) : (
+                              p.unit || '-'
+                            )}
+                          </td>
+                          <td className={`border p-2 text-right ${highlightedPrice.productId === p.id ? 'bg-green-200 transition-colors duration-1000' : ''}`}>
                             {editingProductId === p.id ? (
                               <input
                                 type="number"
@@ -264,7 +306,19 @@ export default function Products() {
                               formatPrice(p.selling_price)
                             )}
                           </td>
-                          <td className="border p-2 text-center">{p.total_stock}</td>
+                          <td className={`border p-2 text-center ${highlightedStock.productId === p.id ? 'bg-blue-200 transition-colors duration-1000' : ''}`}>{p.total_stock}</td>
+                          <td className={`border p-2 text-center ${highlightedThreshold.productId === p.id ? 'bg-yellow-200 transition-colors duration-1000' : ''}`}>
+                            {editingProductId === p.id ? (
+                              <input
+                                type="number"
+                                className="border rounded px-2 py-1 w-24 text-center"
+                                value={tempThreshold}
+                                onChange={e => setTempThreshold(e.target.value)}
+                              />
+                            ) : (
+                              p.low_stock_threshold
+                            )}
+                          </td>
                           <td className="border p-2 text-center">
                             {p.total_stock === 0 ? (
                               <span style={{ color: 'red' }}>Zero Stock</span>
@@ -281,12 +335,77 @@ export default function Products() {
                                   <button
                                     className="text-green-600 mr-2"
                                     onClick={async () => {
-                                      await updateProductPrice(p, Number(tempPrice))
-                                      setEditingProductId(null)
-                                      fetchProducts()
+                                      setSavingPrice(true); // Start saving
+                                      try {
+                                                                                                                                                    const priceUpdateResult = await updateProductPrice(p, Number(tempPrice));
+                                                                                                                
+                                                                                                                                                    let finalPriceUpdateResult = priceUpdateResult;
+                                                                                                                                                    if (priceUpdateResult.shouldConfirm) {
+                                                                                                                                                      if (window.confirm(priceUpdateResult.message)) {
+                                                                                                                                                        finalPriceUpdateResult = await updateProductPrice(p, Number(tempPrice), true); // Force update
+                                                                                                                                                      } else {
+                                                                                                                                                        // If user cancels confirmation, stay in edit mode
+                                                                                                                                                        return;
+                                                                                                                                                      }
+                                                                                                                                                    }
+                                                                                                                
+                                                                                                                                                    if (finalPriceUpdateResult.success) {
+                                                                                                                                                      const productUpdateResult = await updateProduct(p.id, { unit: tempUnit, low_stock_threshold: Number(tempThreshold) });
+                                                                                                                
+                                                                                                                                                      if (productUpdateResult.success) {
+                                                                                                                                                        // Log all changes at once
+                                                                                                                                                        await logProductChanges(p.id, finalPriceUpdateResult.priceHistory, productUpdateResult.attributeHistory);
+                                                                                                                
+                                                                                                                                                        setEditingProductId(null);
+                                                                                                                                                        fetchProducts();
+                                                                                                                
+                                                                                                                                                        // Highlight logic for Unit
+                                                                                                                                                        if (p.unit !== tempUnit) {
+                                                                                                                                                          if (highlightedUnit.timer) {
+                                                                                                                                                            clearTimeout(highlightedUnit.timer);
+                                                                                                                                                          }
+                                                                                                                                                          const unitTimer = setTimeout(() => {
+                                                                                                                                                            setHighlightedUnit({ productId: null, timer: null });
+                                                                                                                                                          }, 180000); // 3 minutes
+                                                                                                                                                          setHighlightedUnit({ productId: p.id, timer: unitTimer });
+                                                                                                                                                        }
+                                                                                                                
+                                                                                                                                                        // Highlight logic for Stock Threshold
+                                                                                                                                                        if (p.low_stock_threshold !== Number(tempThreshold)) {
+                                                                                                                                                          if (highlightedThreshold.timer) {
+                                                                                                                                                            clearTimeout(highlightedThreshold.timer);
+                                                                                                                                                          }
+                                                                                                                                                          const thresholdTimer = setTimeout(() => {
+                                                                                                                                                            setHighlightedThreshold({ productId: null, timer: null });
+                                                                                                                                                          }, 180000); // 3 minutes
+                                                                                                                                                          setHighlightedThreshold({ productId: p.id, timer: thresholdTimer });
+                                                                                                                                                        }
+                                                                                                                
+                                                                                                                                                        // Highlight logic for Selling Price
+                                                                                                                                                        if (p.selling_price !== Number(tempPrice)) {
+                                                                                                                                                          if (highlightedPrice.timer) {
+                                                                                                                                                            clearTimeout(highlightedPrice.timer);
+                                                                                                                                                          }
+                                                                                                                                                          const priceTimer = setTimeout(() => {
+                                                                                                                                                            setHighlightedPrice({ productId: null, timer: null });
+                                                                                                                                                          }, 180000); // 3 minutes
+                                                                                                                                                          setHighlightedPrice({ productId: p.id, timer: priceTimer });
+                                                                                                                                                        }
+                                                                                                                                                      } else {
+                                                                                                                                                        alert('Failed to update product attributes.');
+                                                                                                                                                      }
+                                                                                                                                                    } else {
+                                                                                                                                                      alert('Failed to update selling price.');
+                                                                                                                                                    }                                      } catch (err) {
+                                        alert(err.message);
+                                        // Stay in edit mode if an error occurs
+                                      } finally {
+                                        setSavingPrice(false); // End saving
+                                      }
                                     }}
+                                    disabled={savingPrice}
                                   >
-                                    Save
+                                    {savingPrice ? 'Saving...' : 'Save'}
                                   </button>
                                   <button
                                     className="text-gray-600"
@@ -299,9 +418,10 @@ export default function Products() {
                                 <button
                                   className="text-blue-600 hover:underline"
                                   onClick={() => {
-                                    setEditingProductId(p.id)
-                                    setTempPrice(p.selling_price)
-                                  }}
+                                                                                                        setEditingProductId(p.id)
+                                                                                                        setTempPrice(p.selling_price)
+                                                                                                        setTempUnit(p.unit)
+                                                                                                        setTempThreshold(p.low_stock_threshold)                                  }}
                                 >
                                   Edit
                                 </button>

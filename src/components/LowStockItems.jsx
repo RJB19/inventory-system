@@ -33,7 +33,9 @@ export default function LowStockItems() {
       total_stock: stockMap[p.id] || 0,
     }))
 
-    const lowStockItems = merged.filter(p => p.total_stock <= p.low_stock_threshold)
+    const lowStockItems = merged
+      .filter(p => p.total_stock <= p.low_stock_threshold)
+      .sort((a, b) => a.total_stock - b.total_stock) // Sort from zero to top
 
     setItems(lowStockItems)
     setLoading(false)

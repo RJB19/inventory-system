@@ -80,7 +80,7 @@ export default function SaleForm({ onClose, onSaved }) {
   function addToCart() {
     const qty = Number(quantity)
     if (!qty || qty <= 0) {
-      alert('Quantity must be at least 1')
+      alert('Quantity must be greater than 0')
       return
     }
 
@@ -271,7 +271,7 @@ export default function SaleForm({ onClose, onSaved }) {
         {/* Quantity Input (remains) */}
         <input
           type="number"
-          min="1"
+          step="any"
           value={quantity}
           onChange={e => setQuantity(e.target.value)}
           className="border p-2 rounded"
@@ -376,7 +376,7 @@ export default function SaleForm({ onClose, onSaved }) {
           disabled={loading}
           className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
         >
-          Save Sale
+          {loading ? 'Saving Sale...' : 'Save Sale'}
         </button>
       </div>
     </div>
